@@ -1,1 +1,56 @@
-{% extends 'base.html' %}{% block content %}<h1>{{leader.name}}</h1><p>{{leader.office}} · {{leader.county}} · {{leader.party}}</p><div class="score big">{{score}}/100</div><div class="metrics">{% for label,key in [('Performance','performance'),('Activity','activity'),('Promise delivery','promise'),('Budget','budget'),('Evidence coverage','evidence')] %}<div><b>{{label}}</b><div class="bar"><i style="width:{{leader[key]}}%"></i></div><span>{{leader[key]}}/100</span></div>{% endfor %}</div><p class="notice">This starter dataset contains illustrative records. Replace them with verified official-source data before public publication.</p>{% endblock %}
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>{{ leader.name }}</h1>
+
+<p>
+    {{ leader.office }} · {{ leader.county }} · {{ leader.party }}
+</p>
+
+<div class="card">
+
+    <h2>Overall Score</h2>
+
+    <div class="score">
+        {{ leader.overall }}/100
+    </div>
+
+</div>
+
+<div class="grid">
+
+    <div class="card">
+        <h3>Performance</h3>
+        <strong>{{ leader.performance }}/100</strong>
+    </div>
+
+    <div class="card">
+        <h3>Activity</h3>
+        <strong>{{ leader.activity }}/100</strong>
+    </div>
+
+    <div class="card">
+        <h3>Promise Delivery</h3>
+        <strong>{{ leader.promise }}/100</strong>
+    </div>
+
+    <div class="card">
+        <h3>Budget</h3>
+        <strong>{{ leader.budget }}/100</strong>
+    </div>
+
+    <div class="card">
+        <h3>Evidence</h3>
+        <strong>{{ leader.evidence }}/100</strong>
+    </div>
+
+</div>
+
+<br>
+
+<a class="btn" href="/leaders">
+    ← Back to leaders
+</a>
+
+{% endblock %}

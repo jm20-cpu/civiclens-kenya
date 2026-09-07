@@ -1,1 +1,55 @@
-{% extends 'base.html' %}{% block content %}<h1>Compare leaders</h1><p>Select leaders from the database by URL, e.g. <code>/compare?id=1&id=2</code>.</p><div class="grid">{% for l in leaders %}<article class="card"><h3>{{l.name}}</h3><div class="score">{{score(l)}}/100</div><p>Performance: {{l.performance}}</p><p>Activity: {{l.activity}}</p><p>Promises: {{l.promise}}</p><p>Budget: {{l.budget}}</p><p>Evidence: {{l.evidence}}</p></article>{% endfor %}</div>{% endblock %}
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Compare Leaders</h1>
+
+{% if leaders|length >= 2 %}
+
+<div class="grid">
+
+    {% for leader in leaders %}
+
+    <article class="card">
+
+        <h2>{{ leader.name }}</h2>
+
+        <p>{{ leader.office }}</p>
+
+        <div class="score">
+            {{ leader.overall }}/100
+        </div>
+
+        <hr>
+
+        <p>Performance: {{ leader.performance }}/100</p>
+        <p>Activity: {{ leader.activity }}/100</p>
+        <p>Promises: {{ leader.promise }}/100</p>
+        <p>Budget: {{ leader.budget }}/100</p>
+        <p>Evidence: {{ leader.evidence }}/100</p>
+
+    </article>
+
+    {% endfor %}
+
+</div>
+
+{% else %}
+
+<div class="card">
+
+    <h2>Select two leaders to compare</h2>
+
+    <p>
+        Go to the Leaders page and choose leaders for comparison.
+    </p>
+
+    <a class="btn" href="/leaders">
+        Browse Leaders
+    </a>
+
+</div>
+
+{% endif %}
+
+{% endblock %}
