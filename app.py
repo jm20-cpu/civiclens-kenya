@@ -1,56 +1,355 @@
-from flask import Flask, render_template, jsonify, request
-import sqlite3, os, math
-from datetime import datetime
+from flask import Flask, render_template, request, jsonify
+import sqlite3
+import os
 
-app=Flask(__name__)
-DB=os.getenv('DB_PATH','civiclens.db')
+app = Flask(__name__)
 
-def db():
-    c=sqlite3.connect(DB); c.row_factory=sqlite3.Row; return c
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.environ.get(
+    "DB_PATH",
+    os.path.join(BASE_DIR, "civiclens.db")
+)
 
-def init():
-    c=db(); c.executescript('''CREATE TABLE IF NOT EXISTS leaders(id INTEGER PRIMARY KEY,name TEXT,office TEXT,county TEXT,party TEXT,performance REAL,activity REAL,promise REAL,budget REAL,evidence REAL);''')
-    if c.execute('SELECT COUNT(*) FROM leaders').fetchone()[0]==0:
-        rows=[('Sample Leader A','National Office','Kenya','Party A',72,81,68,74,92),('Sample Leader B','County Office','Example County','Party B',65,76,61,79,88),('Sample Leader C','Parliament','Example County','Independent',80,69,73,71,95)]
-        c.executemany('INSERT INTO leaders(name,office,county,party,performance,activity,promise,budget,evidence) VALUES(?,?,?,?,?,?,?,?,?)',rows)
-    c.commit(); c.close()
 
-def score(r): return round(sum(r[k] for k in ('performance','activity','promise','budget','evidence'))/5,1)
+# -----------------------------
+# DATABASE
+# -----------------------------
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-@app.route('/')
+
+def initialize_database():
+    conn = get_db()
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS leaders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            office TEXT NOT NULL,
+            county TEXT NOT NULL,
+            party TEXT NOT NULL,
+            performance REAL NOT NULL,
+            activity REAL NOT NULL,
+            promise REAL NOT NULL,
+            budget REAL NOT NULL,
+            evidence REAL NOT NULL
+        )
+    """)
+
+    count = conn.execute(
+        "SELECT COUNT(*) FROM leaders"
+    ).fetchone()[0]
+
+    # Add starter data if database is empty
+    if count == 0:
+        leaders = [
+            (
+                "Sample Leader A",
+                "National Office",
+                "Kenya",
+                "Party A",
+                72,
+                81,
+                68,
+                74,
+                92
+            ),
+            (
+                "Sample Leader B",
+                "County Office",
+                "Example County",
+                "Party B",
+                65,
+                76,
+                61,
+                79,
+                88
+            ),
+            (
+                "Sample Leader C",
+                "Parliament",
+                "Example County",
+                "Independent",
+                80,
+                69,
+                73,
+                71,
+                95
+            ),
+            (
+                "Sample Leader D",
+                "National Office",
+                "Kenya",
+                "Party C",
+                77,
+                84,
+                70,
+                68,
+                90
+            ),
+            (
+                "Sample Leader E",
+                "County Office",
+                "Example County",
+                "Independent",
+                71,
+                73,
+                75,
+                82,
+                86
+            )
+        ]
+
+        conn.executemany("""
+            INSERT INTO leaders
+            (
+                name,
+                office,
+                county,
+                party,
+                performance,
+                activity,
+                promise,
+                budget,
+                evidence
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, leaders)
+
+    conn.commit()
+    conn.close()
+
+
+# Initialize database when application starts
+initialize_database()
+
+
+# -----------------------------
+# HELPER
+# -----------------------------
+def leader_to_dict(row):
+    data = dict(row)
+
+    scores = [
+        data["performance"],
+        data["activity"],
+        data["promise"],
+        data["budget"],
+        data["evidence"]
+    ]
+
+    data["overall"] = round(sum(scores) / len(scores), 1)
+
+    return data
+
+
+# -----------------------------
+# HOME
+# -----------------------------
+@app.route("/")
 def home():
-    c=db(); leaders=c.execute('SELECT * FROM leaders ORDER BY performance DESC').fetchall(); c.close()
-    return render_template('index.html',leaders=leaders,score=score)
 
-@app.route('/leaders')
-def leaders():
-    q=request.args.get('q','').strip(); c=db()
-    if q: rows=c.execute('SELECT * FROM leaders WHERE name LIKE ? OR county LIKE ? OR party LIKE ?', (f'%{q}%',f'%{q}%',f'%{q}%')).fetchall()
-    else: rows=c.execute('SELECT * FROM leaders ORDER BY performance DESC').fetchall()
-    c.close(); return render_template('leaders.html',leaders=rows,score=score,q=q)
+    conn = get_db()
 
-@app.route('/leader/<int:lid>')
-def leader(lid):
-    c=db(); r=c.execute('SELECT * FROM leaders WHERE id=?',(lid,)).fetchone(); c.close()
-    if not r: return 'Leader not found',404
-    return render_template('leader.html',leader=r,score=score(r))
+    rows = conn.execute("""
+        SELECT *
+        FROM leaders
+        ORDER BY id DESC
+    """).fetchall()
 
-@app.route('/compare')
+    conn.close()
+
+    leaders = [leader_to_dict(row) for row in rows]
+
+    average_score = 0
+
+    if leaders:
+        average_score = round(
+            sum(l["overall"] for l in leaders) / len(leaders),
+            1
+        )
+
+    return render_template(
+        "index.html",
+        leaders=leaders,
+        average_score=average_score
+    )
+
+
+# -----------------------------
+# LEADERS
+# -----------------------------
+@app.route("/leaders")
+def leaders_page():
+
+    search = request.args.get("search", "").strip()
+
+    conn = get_db()
+
+    if search:
+        rows = conn.execute("""
+            SELECT *
+            FROM leaders
+            WHERE
+                name LIKE ?
+                OR office LIKE ?
+                OR county LIKE ?
+                OR party LIKE ?
+            ORDER BY name
+        """, (
+            f"%{search}%",
+            f"%{search}%",
+            f"%{search}%",
+            f"%{search}%"
+        )).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT *
+            FROM leaders
+            ORDER BY name
+        """).fetchall()
+
+    conn.close()
+
+    leaders = [leader_to_dict(row) for row in rows]
+
+    return render_template(
+        "leaders.html",
+        leaders=leaders,
+        search=search
+    )
+
+
+# -----------------------------
+# SINGLE LEADER
+# -----------------------------
+@app.route("/leader/<int:leader_id>")
+def leader_page(leader_id):
+
+    conn = get_db()
+
+    row = conn.execute("""
+        SELECT *
+        FROM leaders
+        WHERE id = ?
+    """, (leader_id,)).fetchone()
+
+    conn.close()
+
+    if row is None:
+        return "Leader not found", 404
+
+    leader = leader_to_dict(row)
+
+    return render_template(
+        "leader.html",
+        leader=leader
+    )
+
+
+# -----------------------------
+# COMPARE
+# -----------------------------
+@app.route("/compare")
 def compare():
-    ids=request.args.getlist('id',type=int); c=db(); rows=[]
-    for i in ids[:4]:
-        r=c.execute('SELECT * FROM leaders WHERE id=?',(i,)).fetchone()
-        if r: rows.append(r)
-    c.close(); return render_template('compare.html',leaders=rows,score=score)
 
-@app.route('/api/leaders')
-def api():
-    c=db(); rows=c.execute('SELECT * FROM leaders ORDER BY performance DESC').fetchall(); c.close()
-    return jsonify([dict(r,overall_score=score(r)) for r in rows])
+    ids = request.args.getlist("id")
 
-@app.route('/refresh',methods=['POST','GET'])
+    conn = get_db()
+
+    leaders = []
+
+    for leader_id in ids[:2]:
+
+        try:
+            leader_id = int(leader_id)
+        except ValueError:
+            continue
+
+        row = conn.execute("""
+            SELECT *
+            FROM leaders
+            WHERE id = ?
+        """, (leader_id,)).fetchone()
+
+        if row:
+            leaders.append(leader_to_dict(row))
+
+    conn.close()
+
+    return render_template(
+        "compare.html",
+        leaders=leaders
+    )
+
+
+# -----------------------------
+# API
+# -----------------------------
+@app.route("/api/leaders")
+def api_leaders():
+
+    conn = get_db()
+
+    rows = conn.execute("""
+        SELECT *
+        FROM leaders
+        ORDER BY name
+    """).fetchall()
+
+    conn.close()
+
+    leaders = [
+        leader_to_dict(row)
+        for row in rows
+    ]
+
+    return jsonify({
+        "success": True,
+        "count": len(leaders),
+        "leaders": leaders
+    })
+
+
+# -----------------------------
+# HEALTH CHECK
+# -----------------------------
+@app.route("/health")
+def health():
+
+    return jsonify({
+        "status": "online",
+        "database": os.path.exists(DB_PATH)
+    })
+
+
+# -----------------------------
+# REFRESH
+# -----------------------------
+@app.route("/refresh")
 def refresh():
-    return jsonify({'status':'ready','message':'Data refresh pipeline is ready. Connect official source adapters before publishing live political data.','updated_at':datetime.utcnow().isoformat()+'Z'})
 
-init()
-if __name__=='__main__': app.run(host='0.0.0.0',port=int(os.getenv('PORT',5000)),debug=True)
+    initialize_database()
+
+    return jsonify({
+        "success": True,
+        "message": "Database checked and initialized."
+    })
+
+
+# -----------------------------
+# RUN
+# -----------------------------
+if __name__ == "__main__":
+
+    port = int(
+        os.environ.get("PORT", 5000)
+    )
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=True
+    )
