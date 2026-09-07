@@ -1,1 +1,56 @@
-{% extends 'base.html' %}{% block content %}<h1>Leader database</h1><form><input name="q" value="{{q}}" placeholder="Search leader, county or party"><button>Search</button></form><div class="grid">{% for l in leaders %}<article class="card"><h3>{{l.name}}</h3><p>{{l.office}} · {{l.county}}</p><strong>{{score(l)}}/100</strong><p>Performance {{l.performance}} · Activity {{l.activity}} · Promises {{l.promise}} · Budget {{l.budget}} · Evidence {{l.evidence}}</p><a href="/leader/{{l.id}}">Full analysis</a></article>{% else %}<p>No results.</p>{% endfor %}</div>{% endblock %}
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Leader Database</h1>
+
+<form method="GET" action="/leaders">
+    <input
+        type="text"
+        name="search"
+        value="{{ search }}"
+        placeholder="Search leader, county or party"
+    >
+    <button type="submit">Search</button>
+</form>
+
+<div class="grid">
+
+{% for l in leaders %}
+
+<article class="card">
+
+    <small>{{ l.office }}</small>
+
+    <h3>{{ l.name }}</h3>
+
+    <p>{{ l.county }} · {{ l.party }}</p>
+
+    <div class="score">
+        {{ l.overall }}<small>/100</small>
+    </div>
+
+    <p>Performance: {{ l.performance }}/100</p>
+    <p>Activity: {{ l.activity }}/100</p>
+    <p>Promises: {{ l.promise }}/100</p>
+    <p>Budget: {{ l.budget }}/100</p>
+    <p>Evidence: {{ l.evidence }}/100</p>
+
+    <a href="/leader/{{ l.id }}">
+        Full Analysis →
+    </a>
+
+</article>
+
+{% else %}
+
+<article class="card">
+    <h3>No results</h3>
+    <p>Try another search.</p>
+</article>
+
+{% endfor %}
+
+</div>
+
+{% endblock %}

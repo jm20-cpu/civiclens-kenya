@@ -1,97 +1,63 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <section class="hero">
-    <div>
-        <span class="tag">DATA INTELLIGENCE</span>
-
-        <h1>Understand leadership through data.</h1>
-
-        <p>
-            Analyze performance, activity, promises, budgets and evidence
-            using transparent metrics.
-        </p>
-
-        <a class="btn" href="/leaders">Explore leaders</a>
-    </div>
+    <span class="tag">CIVIC DATA INTELLIGENCE</span>
+    <h1>Know Your Leader</h1>
+    <p>Analyze leadership through performance, activity, promises, budgets and evidence.</p>
+    <a class="btn" href="/leaders">Explore Leaders</a>
 </section>
 
 <h2>Performance Overview</h2>
 
 <div class="grid">
+{% for l in leaders %}
+<article class="card">
+    <small>{{ l.office }}</small>
+    <h3>{{ l.name }}</h3>
+    <p>{{ l.county }} · {{ l.party }}</p>
 
-    {% for l in leaders %}
+    <div class="score">
+        {{ l.overall }}<small>/100</small>
+    </div>
 
-    <article class="card">
-
-        <small>{{ l.office }}</small>
-
-        <h3>{{ l.name }}</h3>
-
-        <p>{{ l.county }} · {{ l.party }}</p>
-
-        <div class="score">
-            {{ l.overall }}
-            <small>/100</small>
-        </div>
-
-        <a href="/leader/{{ l.id }}">
-            View analysis →
-        </a>
-
-    </article>
-
-    {% else %}
-
-    <article class="card">
-        <h3>No leaders found</h3>
-        <p>The database currently contains no leader records.</p>
-    </article>
-
-    {% endfor %}
-
+    <a href="/leader/{{ l.id }}">View Full Analysis →</a>
+</article>
+{% else %}
+<article class="card">
+    <h3>No leaders found</h3>
+</article>
+{% endfor %}
 </div>
 
-<h2>Overall Performance</h2>
-
+<h2>Score Comparison</h2>
 <canvas id="chart"></canvas>
 
 <script>
 fetch("/api/leaders")
-    .then(response => response.json())
-    .then(data => {
+.then(response => response.json())
+.then(data => {
+    const leaders = data.leaders || [];
 
-        const leaders = data.leaders || [];
-
-        new Chart(
-            document.getElementById("chart"),
-            {
-                type: "bar",
-
-                data: {
-                    labels: leaders.map(x => x.name),
-
-                    datasets: [{
-                        label: "Overall Score",
-
-                        data: leaders.map(x => x.overall)
-                    }]
-                },
-
-                options: {
-                    responsive: true,
-
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100
-                        }
-                    }
+    new Chart(document.getElementById("chart"), {
+        type: "bar",
+        data: {
+            labels: leaders.map(l => l.name),
+            datasets: [{
+                label: "Overall Score",
+                data: leaders.map(l => l.overall)
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
                 }
             }
-        );
+        }
     });
+});
 </script>
-
-{% endblock %}
+{% endblock %}sssss
