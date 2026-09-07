@@ -118,10 +118,10 @@ def leaders_page():
                OR party LIKE ?
             ORDER BY name
         """, (
-            f"%{search}%",
-            f"%{search}%",
-            f"%{search}%",
-            f"%{search}%"
+            "%" + search + "%",
+            "%" + search + "%",
+            "%" + search + "%",
+            "%" + search + "%"
         )).fetchall()
     else:
         rows = conn.execute("""
@@ -132,14 +132,32 @@ def leaders_page():
 
     conn.close()
 
-    leaders = [prepare_leader(row) for row in rows]
+    leaders = []
+
+    for row in rows:
+        leader = dict(row)
+
+        scores = [
+            float(leader.get("performance", 0)),
+            float(leader.get("activity", 0)),
+            float(leader.get("promise", 0)),
+            float(leader.get("budget", 0)),
+            float(leader.get("evidence", 0))
+        ]
+
+        leader["overall"] = round(sum(scores) / 5, 1)
+
+        # Compatibility with older templates
+        leader["overall_score"] = leader["overall"]
+
+        leaders.append(leader)
 
     return render_template(
         "leaders.html",
         leaders=leaders,
-        search=search
+        search=search,
+        score=0
     )
-
 
 @app.route("/leader/<int:leader_id>")
 def leader_page(leader_id):
